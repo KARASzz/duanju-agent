@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.cache/
+logs/
+scripts_output/
+reports/
+*.zip
+.env
+.claude/
+.gemini/
