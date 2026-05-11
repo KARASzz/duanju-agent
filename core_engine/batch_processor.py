@@ -60,11 +60,20 @@ class BatchProcessor:
     职责：遍历 drafts 目录下所有的剧本草稿，串联 [读取 -> 智能解析 -> 商业质检 -> 格式渲染 -> 落盘输出] 全生命周期。
     特性：支持多线程并发处理，实现对几十集短剧的秒级工业流水线打包。
     """
-    def __init__(self, drafts_dir: str, output_dir: str, reports_dir: str, config: dict, no_cache: bool = False):
+    def __init__(
+        self,
+        drafts_dir: str,
+        output_dir: str,
+        reports_dir: str,
+        config: dict,
+        no_cache: bool = False,
+        context_bundle: Optional[Dict[str, Any]] = None,
+    ):
         self.drafts_dir = drafts_dir
         self.output_dir = output_dir
         self.reports_dir = reports_dir
         self.config = config
+        self.context_bundle = context_bundle
         self.pipeline_cfg = self.config.get("pipeline", {})
         rate_limit_cfg = self.pipeline_cfg.get("rate_limit", {})
         requests_per_second = float(rate_limit_cfg.get("requests_per_second", 0) or 0)
@@ -129,6 +138,7 @@ class BatchProcessor:
         parse_result = self.parser.parse_draft(
             draft_content,
             total_timeout_sec=self.file_timeout_sec,
+            context_bundle=self.context_bundle,
         )
         result.timing["parse_sec"] = time.perf_counter() - parse_start
         result.parser_metrics = parse_result.to_dict()

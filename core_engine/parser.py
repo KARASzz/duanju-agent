@@ -3,7 +3,6 @@ import json
 import os
 import random
 import re
-import sys
 import threading
 import time
 from dataclasses import dataclass
@@ -18,7 +17,6 @@ from openai import (
 from openai import (
     APITimeoutError as _APITimeoutError,
 )
-from openai import OpenAI
 from core_engine.llm_client import LLMClient
 from openai import (
     RateLimitError as _RateLimitError,
@@ -149,6 +147,7 @@ class DraftParser:
         初始化解析器。建议从外部传入统一加载好的 config 实例以优化重复 I/O。
         """
         self.config = config if config else load_config()
+        self.no_cache = no_cache
         parser_cfg = self.config.get("parser", {})
         retry_cfg = parser_cfg.get("retry", {})
         pipeline_cfg = self.config.get("pipeline", {})
@@ -232,14 +231,24 @@ class DraftParser:
                     self.retriever = LocalRetriever(kb_dir)
                     self.retriever.build_index()
 
-    def _build_cache_salt(self) -> str:
+    def _build_cache_salt(self, context_bundle: Optional[Dict[str, Any]] = None) -> str:
         prompt_hash = hashlib.sha256(self.prompt_template.encode("utf-8")).hexdigest()
+        bundle_hash = ""
+        if context_bundle:
+            bundle_seed = (
+                context_bundle.get("integrity_hash")
+                or context_bundle.get("bundle_id")
+                or context_bundle.get("project_id")
+                or json.dumps(context_bundle, ensure_ascii=False, sort_keys=True, default=str)
+            )
+            bundle_hash = hashlib.sha256(str(bundle_seed).encode("utf-8")).hexdigest()
         fingerprint_obj = {
             "model": self.model,
             "strict_validation": self.strict_validation,
             "enable_thinking": self.enable_thinking,
             "enable_rag": self.enable_rag,
             "rag_top_k": self.rag_top_k,
+            "context_bundle": bundle_hash,
         }
         cfg_fingerprint = hashlib.sha256(
             json.dumps(fingerprint_obj, ensure_ascii=False, sort_keys=True).encode("utf-8")
@@ -344,7 +353,7 @@ class DraftParser:
         candidate = cls._extract_first_json_object(cls._clean_json_string(text))
         candidate = candidate.replace(chr(0x201c), chr(0x22)).replace(chr(0x201d), chr(0x22))
         candidate = candidate.replace(chr(0x2018), chr(0x27)).replace(chr(0x2019), chr(0x27))
-        candidate = re.sub(r",(\s*[}\]])", r"", candidate)
+        candidate = re.sub(r",(\s*[}\]])", r"\1", candidate)
         return candidate.strip()
 
 
@@ -578,9 +587,10 @@ class DraftParser:
     ) -> ParseResult:
         """解析剧本草稿核心入口逻辑"""
         started = time.perf_counter()
+        use_cache = bool(use_cache and not self.no_cache)
         
         if use_cache:
-            salt = self._build_cache_salt()
+            salt = self._build_cache_salt(context_bundle=context_bundle)
             cached_data = self.cache_manager.get_cache(draft_content, salt=salt, rag_query=rag_query)
             if cached_data:
                 logger.info("🚀 [Cache Hit] 发现有效缓存，跳过 LLM 调用")
@@ -727,7 +737,7 @@ class DraftParser:
                     self.rate_limiter.report_success()
 
                 if use_cache:
-                    salt = self._build_cache_salt()
+                    salt = self._build_cache_salt(context_bundle=context_bundle)
                     self.cache_manager.set_cache(
                         draft_content,
                         data_dict,

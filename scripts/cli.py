@@ -14,10 +14,10 @@ def _get_cache_manager(workspace: str):
     return CacheManager(cache_dir)
 
 
-def _run_pipeline_command(no_cache: bool) -> None:
+def _run_pipeline_command(no_cache: bool, bundle_path: Optional[str] = None) -> None:
     from core_engine.main_pipeline import main as run_pipeline
 
-    run_pipeline(no_cache=no_cache)
+    run_pipeline(no_cache=no_cache, bundle_path=bundle_path)
 
 
 def _show_stats_command() -> None:
@@ -61,12 +61,34 @@ def _self_test_command(target: str, output_dir: Optional[str] = None) -> None:
     run_self_test(output_dir=output_dir)
 
 
+def _ltm_review_command(project_id: Optional[str], apply_approved: bool) -> int:
+    from pre_hub.ltm import LTMGovernance
+
+    governance = LTMGovernance(_get_workspace())
+    candidates = governance.shadow.candidates(project_id=project_id)
+    print(f"LTM候选数: {len(candidates)}")
+    for candidate in candidates:
+        print(
+            f"- {candidate.candidate_id} "
+            f"{candidate.memory_type.value} "
+            f"state={candidate.review_state.value} "
+            f"conf={candidate.candidate_confidence:.2f}"
+        )
+    if apply_approved:
+        audits = governance.apply_approved(project_id=project_id)
+        print(f"已处理云端写回审计事件: {len(audits)}")
+        for audit in audits:
+            print(f"- {audit.action.value} {audit.candidate_id}: {audit.reason}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="红果剧本一键制造机 CLI 控制塔")
     subparsers = parser.add_subparsers(dest="command", help="选择子命令")
 
     run_parser = subparsers.add_parser("run", help="启动全自动流水线处理 drafts/ 文件夹")
     run_parser.add_argument("--no-cache", action="store_true", help="忽略现有解析快照，强制重新调用 LLM")
+    run_parser.add_argument("--bundle", help="Pre-Hub ContextBundle JSON 路径，用于注入立项上下文")
 
     clear_parser = subparsers.add_parser("clear-cache", help="清理渲染缓存数据")
     clear_parser.add_argument("--filter", type=str, help="根据关键词筛选清理特定题材或剧本")
@@ -85,6 +107,10 @@ def build_parser() -> argparse.ArgumentParser:
     self_test_parser.add_argument("target", choices=["validator", "renderer"], help="选择要运行的自检目标")
     self_test_parser.add_argument("--output-dir", help="renderer 自检输出目录")
 
+    ltm_parser = subparsers.add_parser("ltm-review", help="查看或应用 Pre-Hub LTM 写回候选")
+    ltm_parser.add_argument("--project-id", help="只处理指定项目ID")
+    ltm_parser.add_argument("--apply-approved", action="store_true", help="将已批准候选写回云端 LTM")
+
     return parser
 
 
@@ -93,7 +119,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "run":
-        _run_pipeline_command(no_cache=args.no_cache)
+        _run_pipeline_command(no_cache=args.no_cache, bundle_path=args.bundle)
         return 0
 
     if args.command == "stats":
@@ -128,6 +154,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.command == "self-test":
         _self_test_command(target=args.target, output_dir=args.output_dir)
         return 0
+
+    if args.command == "ltm-review":
+        return _ltm_review_command(
+            project_id=args.project_id,
+            apply_approved=args.apply_approved,
+        )
 
     parser.print_help()
     return 0

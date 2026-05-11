@@ -1,13 +1,24 @@
 import datetime
 import json
 import os
-import shutil
 from collections import Counter
 from typing import Dict, List
 
 from core_engine.batch_processor import BatchProcessor, FileProcessResult
 from core_engine.config_loader import load_config
 from core_engine.packager import ProjectPackager
+
+
+def _load_context_bundle(bundle_path: str) -> Dict[str, object]:
+    with open(bundle_path, "r", encoding="utf-8") as f:
+        payload = json.load(f)
+    if not isinstance(payload, dict):
+        raise ValueError("ContextBundle JSON root must be an object.")
+    required = {"project_id", "project_capsule", "preflight_passport"}
+    missing = sorted(required - set(payload.keys()))
+    if missing:
+        raise ValueError(f"Invalid ContextBundle, missing fields: {', '.join(missing)}")
+    return payload
 
 
 def _build_summary(results: List[FileProcessResult]) -> Dict[str, object]:
@@ -118,7 +129,7 @@ def show_stats(config: dict):
     print("=" * 54 + "\n")
 
 
-def main(no_cache: bool = False) -> None:
+def main(no_cache: bool = False, bundle_path: str = None) -> None:
     """
     红果剧本工业化流水线执行入口 - 满足高并发与高质量双重需求
     """
@@ -140,12 +151,24 @@ def main(no_cache: bool = False) -> None:
     drafts_dir = os.path.join(workspace_root, pipeline_cfg.get("drafts_dir", "drafts"))
     output_dir = os.path.join(workspace_root, pipeline_cfg.get("output_dir", "scripts_output"))
     reports_dir = os.path.join(workspace_root, pipeline_cfg.get("reports_dir", "reports"))
+    context_bundle = None
+    if bundle_path:
+        context_bundle = _load_context_bundle(bundle_path)
+        project_id = context_bundle.get("project_id")
+        print(f"[PreHub] 已加载 ContextBundle: {project_id}")
 
     for directory in (drafts_dir, output_dir, reports_dir):
         os.makedirs(directory, exist_ok=True)
 
     max_workers = int(pipeline_cfg.get("max_workers", 3))
-    processor = BatchProcessor(drafts_dir, output_dir, reports_dir, config=config, no_cache=no_cache)
+    processor = BatchProcessor(
+        drafts_dir,
+        output_dir,
+        reports_dir,
+        config=config,
+        no_cache=no_cache,
+        context_bundle=context_bundle,
+    )
     results = processor.run_batch(max_workers=max_workers)
 
     if not results:

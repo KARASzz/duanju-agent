@@ -76,3 +76,34 @@ def test_cli_renderer_self_test_passes_output_dir(monkeypatch):
 
     assert exit_code == 0
     assert calls == {"target": "renderer", "output_dir": "tmp-output"}
+
+
+def test_cli_run_passes_bundle(monkeypatch):
+    calls = {}
+
+    def fake_run(no_cache, bundle_path=None):
+        calls["no_cache"] = no_cache
+        calls["bundle_path"] = bundle_path
+
+    monkeypatch.setattr(cli, "_run_pipeline_command", fake_run)
+
+    exit_code = cli.main(["run", "--no-cache", "--bundle", "bundle.json"])
+
+    assert exit_code == 0
+    assert calls == {"no_cache": True, "bundle_path": "bundle.json"}
+
+
+def test_cli_ltm_review_dispatch(monkeypatch):
+    calls = {}
+
+    def fake_review(project_id, apply_approved):
+        calls["project_id"] = project_id
+        calls["apply_approved"] = apply_approved
+        return 0
+
+    monkeypatch.setattr(cli, "_ltm_review_command", fake_review)
+
+    exit_code = cli.main(["ltm-review", "--project-id", "p1", "--apply-approved"])
+
+    assert exit_code == 0
+    assert calls == {"project_id": "p1", "apply_approved": True}

@@ -1,2 +1,5 @@
-# 前置决策中台 (Pre-Hub)
-# 职责：在主流水线之前完成市场判断、赛道分流、概念竞技、叙事图谱和对抗验证
+"""Pre-Hub V4 前置决策中台."""
+
+from pre_hub.pre_hub import PreHubOrchestrator
+
+__all__ = ["PreHubOrchestrator"]

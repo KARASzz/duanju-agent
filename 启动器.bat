@@ -33,22 +33,24 @@ echo ╚════════════════════════
 
 :menu
 echo.
-echo ╔══════════【 核心工作流 】══════════╗
+echo ╔══════════【 核心工作流 】════════════╗
 echo ║                                      ║
 echo ║  [1] 🧭 前置中台评审 (Preflight)     ║
 echo ║  [2] 🚀 全自动流水线 (Build Scripts) ║
-echo ║  [3] 🌾 自动知识导入 (KB Feed)       ║
+echo ║  [3] 🌾 知识饲养员   (KB Feed)       ║
 echo ║  [4] 📦 投稿打包封装 (Packager)      ║
+echo ║  [5] 🧩 一键全流程   (PreHub+Build)  ║
 echo ║                                      ║
 echo ╠════════════【 辅助工具 】════════════╣
 echo ║                                      ║
-echo ║  [5] 📊 查看统计数据 (Show Stats)    ║
-echo ║  [6] 🛰️ 灵感探针     (Trend Radar)   ║
-echo ║  [7] 🧹 缓存管理     (Cache Tools)   ║
+echo ║  [6] 📊 查看统计数据 (Show Stats)    ║
+echo ║  [7] 🛰️ 灵感探针     (Trend Radar)   ║
+echo ║  [8] 🧹 缓存管理     (Cache Tools)   ║
+echo ║  [9] 🧠 LTM写回审计 (LTM Review)    ║
 echo ║                                      ║
 echo ╠══════════【 诊断与测试项 】══════════╣
 echo ║                                      ║
-echo ║  [8] 🧪 诊断工具箱   (Diagnostics)   ║
+echo ║  [10] 🧪 诊断工具箱   (Diagnostics)  ║
 echo ║                                      ║
 echo ╠════════════【 系统控制 】════════════╣
 echo ║                                      ║
@@ -62,21 +64,18 @@ if "%opt%"=="1" goto run_preflight
 if "%opt%"=="2" goto run_pipeline
 if "%opt%"=="3" goto run_feed
 if "%opt%"=="4" goto run_packager
-if "%opt%"=="5" goto show_stats
-if "%opt%"=="6" goto run_inspire
-if "%opt%"=="7" goto cache_menu
-if "%opt%"=="8" goto diagnostics_menu
+if "%opt%"=="5" goto run_full_flow
+if "%opt%"=="6" goto show_stats
+if "%opt%"=="7" goto run_inspire
+if "%opt%"=="8" goto cache_menu
+if "%opt%"=="9" goto run_ltm_review
+if "%opt%"=="10" goto diagnostics_menu
 if "%opt%"=="0" exit /b
-echo ⚠️ 输入错误，请重新选择 (0-8)
+echo ⚠️ 输入错误，请重新选择 (0-10)
 timeout /t 2 >nul
 goto header
 
-:run_preflight
-echo.
-set "TOPIC="
-set /p TOPIC="请输入要立项评审的题材/关键词: "
-if "%TOPIC%"=="" goto header
-
+:choose_format
 echo.
 echo 请选择制作形态:
 echo   [1] 真人精品 real
@@ -91,8 +90,17 @@ if "%FORMAT_OPT%"=="3" set "FORMAT=mixed"
 if not defined FORMAT (
 	echo ⚠️ 形态编号无效，请重新选择。
 	timeout /t 2 >nul
-	goto run_preflight
+	goto choose_format
 )
+exit /b
+
+:run_preflight
+echo.
+set "TOPIC="
+set /p TOPIC="请输入要立项评审的题材/关键词: "
+if "%TOPIC%"=="" goto header
+
+call :choose_format
 
 set "NO_RAG="
 set /p RAG_OPT="如需禁用 RAG，请输入 N 并回车；直接回车默认启用: "
@@ -101,6 +109,46 @@ if /I "%RAG_OPT%"=="N" set "NO_RAG=--no-rag"
 echo.
 echo 🧭 正在启动前置中台评审...
 python -m scripts.preflight "%TOPIC%" --format %FORMAT% %NO_RAG%
+set "LAST_ERROR=%ERRORLEVEL%"
+goto end_action
+
+:run_full_flow
+echo.
+set "TOPIC="
+set /p TOPIC="请输入要完整生产的题材/关键词: "
+if "%TOPIC%"=="" goto header
+
+call :choose_format
+
+set "NO_RAG="
+set /p RAG_OPT="如需禁用 Tavily/LTM 云端召回，请输入 N；直接回车默认启用: "
+if /I "%RAG_OPT%"=="N" set "NO_RAG=--no-rag"
+
+set "BUNDLE_DIR=reports\preflight"
+if not exist "%BUNDLE_DIR%" mkdir "%BUNDLE_DIR%"
+
+echo.
+echo 🧭 [1/2] 正在执行 Pre-Hub V4 前置准入...
+python -m scripts.preflight "%TOPIC%" --format %FORMAT% %NO_RAG% --save-bundle "%BUNDLE_DIR%"
+set "LAST_ERROR=%ERRORLEVEL%"
+if not "%LAST_ERROR%"=="0" goto end_action
+
+set "BUNDLE_PATH="
+for /f "delims=" %%F in ('dir /b /a:-d /o:-d "%BUNDLE_DIR%\bundle_prj_*.json" 2^>nul') do (
+	set "BUNDLE_PATH=%BUNDLE_DIR%\%%F"
+	goto full_flow_bundle_found
+)
+
+:full_flow_bundle_found
+if "%BUNDLE_PATH%"=="" (
+	echo [任务执行异常] 未找到 Pre-Hub Bundle。
+	set "LAST_ERROR=1"
+	goto end_action
+)
+
+echo.
+echo 🚀 [2/2] 正在携带 ContextBundle 启动生产流水线...
+python -m scripts.cli run --bundle "%BUNDLE_PATH%"
 set "LAST_ERROR=%ERRORLEVEL%"
 goto end_action
 
@@ -190,6 +238,21 @@ echo.
 set /p TOPIC="请输入要导入知识库的主题: "
 if "%TOPIC%"=="" goto header
 python -m core_engine.update_kb "%TOPIC%"
+set "LAST_ERROR=%ERRORLEVEL%"
+goto end_action
+
+:run_ltm_review
+echo.
+set "PROJECT_ID="
+set /p PROJECT_ID="请输入项目ID筛选（直接回车查看全部）: "
+set "APPLY_FLAG="
+set /p APPLY_OPT="如需把已批准候选写回云端 LTM，请输入 Y；直接回车仅查看: "
+if /I "%APPLY_OPT%"=="Y" set "APPLY_FLAG=--apply-approved"
+if "%PROJECT_ID%"=="" (
+	python -m scripts.cli ltm-review %APPLY_FLAG%
+) else (
+	python -m scripts.cli ltm-review --project-id "%PROJECT_ID%" %APPLY_FLAG%
+)
 set "LAST_ERROR=%ERRORLEVEL%"
 goto end_action
 

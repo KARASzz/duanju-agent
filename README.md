@@ -1,4 +1,4 @@
-# 🐉 红果剧本一键制造机 V4.0 (Industrial Edition)
+# 🐉 红果剧本一键制造机 V4.1 (Pre-Hub V4)
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -6,7 +6,7 @@
 
 > **愿每一部剧本都能成为千万级爆款。**
 
-**红果剧本一键制造机** 是一款专为短剧从业者设计的工业级自动化生产工具。它采用**双层架构**：前置决策中台（Pre-Hub）负责市场判断与立项评审，主流水线（Core Engine）负责剧本生产。深度集成了阿里云百炼（DashScope）大模型与 Tavily 实时搜索，通过混合 RAG 架构，将碎片化的灵感草稿转化为符合行业标准、具备高转化潜力的成品剧本。
+**红果剧本一键制造机** 是一款专为短剧从业者设计的工业级自动化生产工具。它采用**前置决策中台 Pre-Hub V4 + 主流水线 Core Engine** 的双层架构：Pre-Hub 负责市场证据、作者 LTM、赛道分流、对抗验证与准入护照，Core Engine 负责草稿解析、渲染、质检和投稿打包。所有密钥只从本地环境变量读取，严禁写入代码或配置文件。
 
 ---
 
@@ -15,47 +15,56 @@
 ```mermaid
 graph TD
     A[题材关键词 / 灵感] --> B[前置决策中台 Pre-Hub]
-    B --> L0[Layer0 信源净化]
-    L0 --> L1[Layer1 市场雷达]
-    L1 --> L2[Layer2 受众建模]
-    L2 --> L3[Layer3 赛道分流]
-    L3 --> L4[Layer4 概念竞技]
-    L4 --> L5[Layer5 叙事图谱]
-    L5 --> L6[Layer6 对抗验证]
-    L6 --> L7[Layer7 生产准入]
-    L7 --> C[ContextBundle]
+    B --> M00[M00 项目接入]
+    M00 --> M01[M01 信源净化]
+    M01 --> M02[M02 市场雷达]
+    M02 --> M03[M03 作者LTM召回]
+    M03 --> M04[M04 受众建模]
+    M04 --> M05[M05 赛道分流]
+    M05 --> M06[M06 概念竞技]
+    M06 --> M07[M07 叙事图谱]
+    M07 --> M08[M08 对抗验证]
+    M08 --> M09[M09 生产准入]
+    M09 --> C[ContextBundle]
     C --> D{准入通过?}
     D -->|通过| E[主流水线 Core Engine]
     D -->|拒绝| F[修复后重新评审]
 
     subgraph "前置决策中台 Pre-Hub"
-    L0
-    L1
-    L2
-    L3
-    L4
-    L5
-    L6
-    L7
+    M00
+    M01
+    M02
+    M03
+    M04
+    M05
+    M06
+    M07
+    M08
+    M09
     end
 
     subgraph "主流水线 Core Engine"
     E
     end
+
+    E --> MX1[MX1 经验写回审计]
 ```
 
-### 前置决策中台 (Pre-Hub) - 7层工作流
+### 前置决策中台 (Pre-Hub V4) - M00-M09 + MX1
 
-| Layer | 名称 | 职责 |
+| 模块 | 名称 | 职责 |
 |:---:|:---|:---|
-| **L0** | 信源净化层 | 时效校验、信源分级、事实/观点分桶、热度归一 |
-| **L1** | 市场雷达层 | 赛道热力图、形态适配图、贝叶斯自由能评分 |
-| **L2** | 受众建模层 | 免疫区/疲惫区/高敏区分析、观看形态矩阵 |
-| **L3** | 赛道分流层 | 制作形态分流（真人/AI/混合）+ 内容赛道分流 |
-| **L4** | 概念竞技层 | ToT并行方案生成、10维评分、优胜劣汰 |
-| **L5** | 叙事图谱层 | GoT依赖图、情绪负债账本、钩子链锁定 |
-| **L6** | 对抗验证层 | 10项必检、Devil's Advocate、伪创新识别 |
-| **L7** | 生产准入层 | 颁发准入护照、生成ContextBundle |
+| **M00** | 项目接入 | 题材、形态、作者、硬约束规范化 |
+| **M01** | 信源净化 | 时效校验、信源分级、事实/观点分桶、风险抽取 |
+| **M02** | 市场雷达 | 赛道热力、形态适配、创新窗口、风险热区 |
+| **M03** | 作者LTM | SearchMemory 召回作者经验，生成偏差校准包 |
+| **M04** | 受众建模 | 免疫区/疲惫区/高敏区/可整合惊讶带分析 |
+| **M05** | 赛道分流 | 内容赛道 + 制作形态双维路由 |
+| **M06** | 概念竞技 | 候选方案评分，选 winner / runner-up / kill |
+| **M07** | 叙事图谱 | GoT节点、情绪债、钩子链、写作简报 |
+| **M08** | 对抗验证 | 证据、路线、钩子、合规、制作负担十项检查 |
+| **M09** | 生产准入 | 颁发准入护照，生成 ContextBundle |
+| **MX1** | LTM治理 | 写回候选、去重、审计、AddMemory/UpdateMemory |
 
 ### 主流水线 (Core Engine)
 
@@ -72,9 +81,10 @@ graph TD
 ## 🚀 核心优势 (Core Advantages)
 
 ### 1. 🧠 智能立项决策
-- **7层前置工作流**：在真正写作前完成市场验证、赛道判断、概念竞技
+- **M00-M09 前置工作流**：在真正写作前完成市场验证、赛道判断、概念竞技
 - **贝叶斯自由能量尺**：量化"新鲜度-困惑度-可整合度"，确保创新与可读性平衡
 - **ToT方案竞技**：并行生成3-5个候选方案，优选后再进入生产
+- **真实源可降级**：优先 Tavily / 百炼 / LTM，缺 key 或失败时降级本地知识库并写入 `fallback_reasons`
 
 ### 2. ⚡ 极限性能与成本控制 (Performance)
 - **Session Cache 深度集成**：适配 DashScope 最新 Responses API，Token消耗最高降低 **40%**
@@ -92,17 +102,34 @@ graph TD
 
 ```bash
 # Step 1: 前置评审 - 立项决策
-python -m scripts.preflight "都市复仇" --format real
+python -m scripts.preflight "都市复仇" --format real --author author_001 --save-bundle reports/preflight
 
-# Step 2: 主流水线 - 剧本生产
-python -m scripts.cli run
+# Step 2: 主流水线 - 携带 ContextBundle 生产
+python -m scripts.cli run --bundle reports/preflight/bundle_<project_id>.json
 ```
 
-### 方式二：直接生产（快速迭代）
+### 方式二：一键全流程
 
 ```bash
-# 直接走主流水线，跳过前置评审
+# 启动器中选择 [9]，或命令行分两步执行上方完整流程
+启动器.bat
+```
+
+### 方式三：直接生产（快速迭代）
+
+```bash
+# 跳过 Pre-Hub，仅处理 drafts/
 python -m scripts.cli run --no-cache
+```
+
+### LTM 写回审计
+
+```bash
+# 查看本地写回候选
+python -m scripts.cli ltm-review
+
+# 将已批准候选写回云端 LTM
+python -m scripts.cli ltm-review --project-id prj_xxx --apply-approved
 ```
 
 ### preflight 命令参数
@@ -115,6 +142,12 @@ python -m scripts.cli run --no-cache
 | `--no-rag` | 禁用RAG增强 | - |
 | `--output`, `-o` | 保存报告文件 | `./report.md` |
 | `--save-bundle` | 保存ContextBundle | `./bundles/` |
+
+报告默认写入：
+
+- `reports/preflight/*.json`
+- `reports/preflight/*.md`
+- `reports/ltm_audit/ltm_audit.jsonl`
 
 ---
 
@@ -130,10 +163,11 @@ python -m scripts.cli run --no-cache
 │   ├── main_pipeline.py  # 流水线入口
 │   └── ...
 ├── pre_hub/              # [新增] 前置决策中台
-│   ├── pre_hub.py        # 7层协调器
+│   ├── pre_hub.py        # M00-M09 协调器
+│   ├── ltm.py            # LTM 召回/写回/审计
 │   ├── layer0_source_guard/  # 信源净化
 │   ├── schemas/
-│   │   └── pre_hub_models.py # 前置中台数据模型
+│   │   └── pre_hub_models.py # Pydantic v2 数据模型
 │   └── ...
 ├── rag_engine/           # RAG混合检索引擎
 │   ├── retriever.py      # 混合检索器
@@ -145,6 +179,8 @@ python -m scripts.cli run --no-cache
 ├── drafts/               # [输入] 原始灵感草稿
 ├── scripts_output/       # [输出] 成品剧本
 ├── reports/              # [输出] 质量诊断报告
+│   ├── preflight/        # Pre-Hub 准入报告与 Bundle
+│   └── ltm_audit/        # LTM 写回审计镜像
 ├── knowledge_base/       # RAG知识库存储
 ├── templates/            # 剧本模板与灵感卡片
 ├── config.yaml           # 全局工业配置
@@ -161,10 +197,19 @@ python -m scripts.cli run --no-cache
 python -m pip install -e .
 ```
 
-### 2. 配置 API
-复制环境配置文件（或直接修改 `config.yaml`）：
-- 填写 `DASHSCOPE_API_KEY` (阿里云百炼)
-- 填写 `TAVILY_API_KEY` (可选，用于前置评审的市场雷达)
+### 2. 配置环境变量
+密钥只能设置在本地环境变量中，不要写入任何代码文件或 `config.yaml`。
+
+```powershell
+$env:DASHSCOPE_API_KEY="..."
+$env:TAVILY_API_KEY="..."
+$env:WORKSPACE_ID="..."
+$env:BAILIAN_INDEX_ID="..."
+$env:LTM_MEMORY_LIBRARY_ID="..."
+$env:LTM_PROFILE_SCHEMA_ID="..."
+```
+
+`DASHSCOPE_API_KEY` 用于 LLM 与 LTM；`TAVILY_API_KEY` 用于实时市场源；`WORKSPACE_ID` / `BAILIAN_INDEX_ID` 用于百炼 RAG；`LTM_*` 用于作者长期记忆。缺少可选 key 时系统会降级本地知识库，并在报告里写明 fallback。
 
 ### 3. 启动项目
 
@@ -174,10 +219,10 @@ python -m pip install -e .
 
 ```bash
 # 前置评审
-python -m scripts.preflight "战神" --format real
+python -m scripts.preflight "战神" --format real --save-bundle reports/preflight
 
 # 主流生产
-python -m scripts.cli run
+python -m scripts.cli run --bundle reports/preflight/bundle_<project_id>.json
 ```
 
 ---
@@ -186,22 +231,23 @@ python -m scripts.cli run
 
 ```
 ============================================================
-[PREFLIGHT PASSPORT] 准入护照
+[PREFLIGHT PASSPORT]
 ============================================================
-项目ID: proj_7dccb9db_1775670062
+项目ID: prj_xxx
 项目标题: 都市复仇
 准入状态: [PASS] 通过
-总分: 60/100
-过期时间: 2026-04-23 01:41
+总分: 76/100
+决策: pass
+过期时间: 2026-05-25 23:49
 
 各关卡得分:
-  信源净化: #########- 90
-  市场雷达: #######--- 75
-  受众建模: #######--- 70
-  赛道分流: ########-- 80
-  概念竞技: ########-- 85
-  叙事图谱: #######--- 75
-  对抗验证: ######---- 60
+  信源净化: ######---- 62
+  市场雷达: #######--- 76
+  作者记忆: #####----- 58
+  赛道分流: #######--- 73
+  概念竞技: #######--- 74
+  叙事图谱: ########-- 82
+  对抗验证: ########-- 80
 
 ============================================================
 [SUCCESS] 项目通过准入，可以使用 ContextBundle 继续主流水线！
@@ -214,6 +260,8 @@ python -m scripts.cli run
 - **实时日志**：详见 `logs/`，采用结构化 JSON 记录，方便回溯生成逻辑
 - **快照恢复**：系统每一步处理都会生成快照，若遇断电或中断，可从 `.cache/` 自动恢复任务
 - **准入护照**：有效期14天，过期需重新评审
+- **Fallback审计**：所有云端缺失或失败都会进入 `fallback_reasons`
+- **LTM审计**：写回候选先进入 `reports/ltm_audit/ltm_audit.jsonl`，再由 `ltm-review --apply-approved` 写回云端
 
 ---
 
@@ -222,7 +270,8 @@ python -m scripts.cli run
 | 组件 | 技术 |
 |:---|:---|
 | LLM | 阿里云 DashScope (Qwen3.6-plus) |
-| 检索 | 阿里云百炼向量库 + Tavily实时搜索 |
+| 检索 | 阿里云百炼向量库 + Tavily实时搜索 + 本地知识库降级 |
+| LTM | 阿里云长期记忆 API + 本地审计镜像 |
 | 缓存 | Session Cache (Token节省40%) |
 | 限流 | AIMD自适应算法 |
 | 数据模型 | Pydantic v2 |
